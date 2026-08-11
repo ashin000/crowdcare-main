@@ -1,0 +1,91 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Checks if the user has the 'official' role in the database
+    function isOfficial() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'official';
+    }
+
+    // Users Collection
+    // - Anyone authenticated can read user profiles (to display names/roles).
+    // - A user can only create or update their own user profile document.
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(userId);
+    }
+
+    // Categories Collection
+    // - Anyone authenticated can read categories.
+    // - Only officials or administrators can modify categories.
+    match /categories/{categoryId} {
+      allow read: if isAuthenticated();
+      allow write: if isOfficial();
+    }
+
+    // Issues Collection
+    // - Anyone authenticated can read issues.
+    // - Any authenticated user can create/report an issue.
+    // - Any authenticated user can update issues (e.g. upvotes, views, status, or assigning).
+    match /issues/{issueId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+    }
+
+    // Updates (Issue status history) Collection
+    // - Anyone authenticated can read updates.
+    // - Only officials can create or write status updates.
+    match /updates/{updateId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOfficial();
+    }
+
+    // Comments Collection
+    // - Anyone authenticated can read comments.
+    // - Any authenticated user can post a comment.
+    // - Only the comment author can update or delete their comment.
+    match /comments/{commentId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // Announcements Collection
+    // - Anyone authenticated can read announcements.
+    // - Only officials can create or update announcements.
+    match /announcements/{announcementId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOfficial();
+    }
+
+    // Polls Collection
+    // - Anyone authenticated can read polls.
+    // - Only officials can create polls.
+    // - Any authenticated user can vote in polls (update votes/voters).
+    match /polls/{pollId} {
+      allow read: if isAuthenticated();
+      allow create: if isOfficial();
+      allow update: if isAuthenticated();
+    }
+
+    // Notifications Collection
+    // - Users can read and update (e.g. mark read) their own notifications.
+    // - Any authenticated user can create a notification (e.g. when updating an issue).
+    match /notifications/{notificationId} {
+      allow read, update: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated();
+    }
+  }
+}
