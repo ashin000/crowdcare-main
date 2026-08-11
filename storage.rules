@@ -1,0 +1,45 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper checks
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function isVideo() {
+      return request.resource.contentType.matches('video/.*');
+    }
+
+    // Limit files by size
+    function isValidImageSize() {
+      return request.resource.size < 5 * 1024 * 1024; // < 5MB
+    }
+
+    function isValidVideoSize() {
+      return request.resource.size < 50 * 1024 * 1024; // < 50MB
+    }
+
+    // Allow authenticated reads on all assets
+    allow read: if isAuthenticated();
+
+    // Issues folders
+    match /issues/{allPaths=**} {
+      allow write: if isAuthenticated() 
+        && (
+          (isImage() && isValidImageSize()) 
+          || (isVideo() && isValidVideoSize())
+        );
+    }
+
+    // Resolution evidence folders
+    match /resolution/{allPaths=**} {
+      allow write: if isAuthenticated() && isImage() && isValidImageSize();
+    }
+  }
+}

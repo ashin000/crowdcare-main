@@ -1,8 +1,12 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { Eye, ThumbsUp, Calendar, MapPin, Tag } from "lucide-react";
 
 export default function IssueCard({ issue, currentUser, onVote, onSelect }) {
-  const isUpvoted = currentUser ? issue.upvotedBy?.includes(currentUser.uid) : false;
+  const navigate = useNavigate();
+  
+  // Upvote check - supports both user arrays or general counters
+  const isUpvoted = currentUser ? (issue.upvotedBy?.includes(currentUser.uid) || localStorage.getItem(`upvoted_${issue.id}_${currentUser.uid}`) === "true") : false;
 
   const handleVoteClick = (e) => {
     e.stopPropagation();
@@ -13,7 +17,16 @@ export default function IssueCard({ issue, currentUser, onVote, onSelect }) {
     onVote(issue.id);
   };
 
+  const handleCardClick = () => {
+    if (onSelect) {
+      onSelect(issue);
+    } else {
+      navigate(`/issues/${issue.id}`);
+    }
+  };
+
   const formatDate = (dateString) => {
+    if (!dateString) return "";
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
       month: "short",
@@ -25,7 +38,7 @@ export default function IssueCard({ issue, currentUser, onVote, onSelect }) {
   return (
     <div 
       className="glass-card animate-scale" 
-      onClick={() => onSelect(issue)}
+      onClick={handleCardClick}
       style={{
         cursor: "pointer",
         display: "flex",
@@ -49,7 +62,7 @@ export default function IssueCard({ issue, currentUser, onVote, onSelect }) {
           background: "#1e293b"
         }}>
           <img 
-            src={issue.imageUrl} 
+            src={issue.imageUrl || "https://images.unsplash.com/photo-1584824486509-112e4181ff6b?w=800"} 
             alt={issue.title} 
             style={{
               width: "100%",
@@ -142,7 +155,7 @@ export default function IssueCard({ issue, currentUser, onVote, onSelect }) {
             overflow: "hidden", 
             whiteSpace: "nowrap",
             width: "100%"
-          }}>{issue.location}</span>
+          }}>{issue.location?.address || "Location detail unprovided"}</span>
         </div>
 
         <div style={{
@@ -154,12 +167,12 @@ export default function IssueCard({ issue, currentUser, onVote, onSelect }) {
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.75rem", color: "var(--text-secondary)" }}>
             <Tag size={12} />
-            <span>{issue.categoryName}</span>
+            <span>{issue.categoryName || issue.category}</span>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
             <span style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.8rem", color: "var(--text-muted)" }}>
-              <Eye size={14} /> {issue.viewsCount}
+              <Eye size={14} /> {issue.viewsCount || 0}
             </span>
             <button 
               onClick={handleVoteClick}
@@ -172,7 +185,7 @@ export default function IssueCard({ issue, currentUser, onVote, onSelect }) {
               }}
             >
               <ThumbsUp size={12} fill={isUpvoted ? "white" : "transparent"} />
-              <span>{issue.upvotes}</span>
+              <span>{issue.upvoteCount || issue.upvotes || 0}</span>
             </button>
           </div>
         </div>

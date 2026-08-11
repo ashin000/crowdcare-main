@@ -1,28 +1,40 @@
 import React, { useState } from "react";
-import { LogIn, Mail, Lock, Shield, User } from "lucide-react";
-import { authService } from "../services/firebase";
+import { Link, useNavigate } from "react-router-dom";
+import { LogIn, Mail, Lock, AlertCircle, Chrome } from "lucide-react";
+import { useAuthContext } from "../context/AuthContext";
 
-export default function Login({ onLoginSuccess, onSwitchToRegister }) {
-  const [role, setRole] = useState("citizen"); // citizen or official
+export default function Login() {
+  const { login, signInWithGoogle } = useAuthContext();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
     try {
-      const user = await authService.signIn(email, password);
-      // Ensure the logged in user matches the role selected in the toggle
-      if (user.role !== role) {
-        throw new Error(`This account is registered as a ${user.role}. Please select the correct portal.`);
-      }
-      onLoginSuccess(user);
+      await login(email, password);
+      navigate("/dashboard");
     } catch (err) {
       console.error(err);
-      setError(err.message || "Invalid credentials!");
+      setError(err.message || "Invalid credentials. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      await signInWithGoogle();
+      navigate("/dashboard");
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Google sign-in failed.");
     } finally {
       setLoading(false);
     }
@@ -33,7 +45,7 @@ export default function Login({ onLoginSuccess, onSwitchToRegister }) {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      minHeight: "70vh",
+      minHeight: "75vh",
       padding: "2rem 0"
     }}>
       <div className="glass-card" style={{ width: "100%", maxWidth: "450px", padding: "2.5rem 2rem" }}>
@@ -55,50 +67,6 @@ export default function Login({ onLoginSuccess, onSwitchToRegister }) {
           <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>Access your CrowdCare civic portal</p>
         </div>
 
-        {/* Role Toggle Selector */}
-        <div style={{
-          display: "flex",
-          background: "rgba(0,0,0,0.2)",
-          padding: "0.25rem",
-          borderRadius: "10px",
-          marginBottom: "1.5rem"
-        }}>
-          <button 
-            type="button"
-            className="btn"
-            onClick={() => setRole("citizen")}
-            style={{
-              flex: 1,
-              padding: "0.5rem",
-              borderRadius: "8px",
-              fontSize: "0.85rem",
-              background: role === "citizen" ? "var(--primary)" : "transparent",
-              color: role === "citizen" ? "white" : "var(--text-secondary)",
-              gap: "0.4rem"
-            }}
-          >
-            <User size={14} />
-            Citizen Portal
-          </button>
-          <button 
-            type="button"
-            className="btn"
-            onClick={() => setRole("official")}
-            style={{
-              flex: 1,
-              padding: "0.5rem",
-              borderRadius: "8px",
-              fontSize: "0.85rem",
-              background: role === "official" ? "var(--success)" : "transparent",
-              color: role === "official" ? "white" : "var(--text-secondary)",
-              gap: "0.4rem"
-            }}
-          >
-            <Shield size={14} />
-            Official Portal
-          </button>
-        </div>
-
         {error && (
           <div style={{
             padding: "0.75rem 1rem",
@@ -108,14 +76,18 @@ export default function Login({ onLoginSuccess, onSwitchToRegister }) {
             color: "var(--danger)",
             fontSize: "0.85rem",
             marginBottom: "1.5rem",
-            textAlign: "center"
+            textAlign: "center",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem"
           }}>
-            {error}
+            <AlertCircle size={16} style={{ flexShrink: 0 }} />
+            <span>{error}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
-          <div className="form-group" style={{ position: "relative" }}>
+          <div className="form-group">
             <label className="form-label">Email Address</label>
             <div style={{ position: "relative" }}>
               <Mail size={16} color="var(--text-muted)" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)" }} />
@@ -131,9 +103,14 @@ export default function Login({ onLoginSuccess, onSwitchToRegister }) {
             </div>
           </div>
 
-          <div className="form-group" style={{ position: "relative", marginBottom: "2rem" }}>
-            <label className="form-label">Password</label>
-            <div style={{ position: "relative" }}>
+          <div className="form-group" style={{ marginBottom: "1rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <label className="form-label" style={{ marginBottom: 0 }}>Password</label>
+              <Link to="/forgot-password" style={{ fontSize: "0.75rem", color: "var(--primary)", fontWeight: 600 }}>
+                Forgot Password?
+              </Link>
+            </div>
+            <div style={{ position: "relative", marginTop: "0.5rem" }}>
               <Lock size={16} color="var(--text-muted)" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)" }} />
               <input 
                 type="password" 
@@ -150,28 +127,42 @@ export default function Login({ onLoginSuccess, onSwitchToRegister }) {
           <button 
             type="submit" 
             className="btn btn-primary" 
-            style={{ width: "100%", padding: "0.85rem", borderRadius: "10px", background: role === "official" ? "var(--success)" : "var(--primary)" }}
+            style={{ width: "100%", padding: "0.85rem", borderRadius: "10px", marginTop: "1rem" }}
             disabled={loading}
           >
             {loading ? "Signing In..." : "Sign In"}
           </button>
         </form>
 
-        <div style={{ textAlign: "center", marginTop: "1.5rem", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+        <div style={{ position: "relative", margin: "1.5rem 0", textAlign: "center" }}>
+          <hr style={{ borderColor: "var(--border)" }} />
+          <span style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            background: "var(--bg-dark)",
+            padding: "0 0.5rem",
+            fontSize: "0.75rem",
+            color: "var(--text-muted)"
+          }}>OR</span>
+        </div>
+
+        <button 
+          onClick={handleGoogleLogin} 
+          className="btn btn-secondary" 
+          style={{ width: "100%", padding: "0.85rem", borderRadius: "10px", display: "flex", gap: "0.5rem", justifyContent: "center" }}
+          disabled={loading}
+        >
+          <Chrome size={18} />
+          Continue with Google
+        </button>
+
+        <div style={{ textAlign: "center", marginTop: "2rem", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
           Don't have an account?{" "}
-          <button 
-            onClick={onSwitchToRegister}
-            style={{ 
-              background: "none", 
-              border: "none", 
-              color: "var(--primary)", 
-              fontWeight: 600, 
-              cursor: "pointer",
-              padding: 0
-            }}
-          >
+          <Link to="/register" style={{ color: "var(--primary)", fontWeight: 600 }}>
             Sign Up
-          </button>
+          </Link>
         </div>
       </div>
     </div>

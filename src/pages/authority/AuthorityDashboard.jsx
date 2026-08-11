@@ -1,39 +1,49 @@
 import React, { useState, useEffect } from "react";
-import { CheckCircle2, AlertTriangle, HelpCircle, BarChart2, PlusCircle, Volume2, Megaphone, Clock, Filter, Eye } from "lucide-react";
-import { dbService } from "../services/firebase";
+import { Link } from "react-router-dom";
+import { 
+  CheckCircle2, Clock, BarChart2, Filter, Eye, AlertTriangle, 
+  Megaphone, PlusCircle, Volume2 
+} from "lucide-react";
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend
+} from "recharts";
+import { getIssues, getCategories, createAnnouncement, createPoll } from "../../firebase/firestore";
+import { useAuthContext } from "../../context/AuthContext";
 
-export default function OfficialDashboard({ currentUser, onSelectIssue }) {
+const COLORS = ["#2b6777", "#52ab98", "#df9008", "#ef4444", "#c8d8e4"];
+
+export default function AuthorityDashboard() {
+  const { currentUser } = useAuthContext();
+  
   const [issues, setIssues] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Tabs for sub-forms
-  const [activeSubTab, setActiveSubTab] = useState("queue"); // queue, announce, poll
+  // Tabs: queue, announce, poll
+  const [activeSubTab, setActiveSubTab] = useState("queue");
 
-  // Filter states
+  // Filters
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
 
-  // Announcement form
+  // Forms
   const [annTitle, setAnnTitle] = useState("");
   const [annContent, setAnnContent] = useState("");
-  const [annSubmitting, setAnnSubmitting] = useState(false);
   const [annSuccess, setAnnSuccess] = useState(false);
 
-  // Poll form
   const [pollTitle, setPollTitle] = useState("");
   const [pollDesc, setPollDesc] = useState("");
   const [pollOptions, setPollOptions] = useState(["", ""]);
-  const [pollSubmitting, setPollSubmitting] = useState(false);
   const [pollSuccess, setPollSuccess] = useState(false);
 
-  const loadDashboardData = async () => {
+  const loadData = async () => {
     setLoading(true);
     try {
       const [allIssues, allCats] = await Promise.all([
-        dbService.getIssues(),
-        dbService.getCategories()
+        getIssues(),
+        getCategories()
       ]);
       setIssues(allIssues);
       setCategories(allCats);
@@ -45,27 +55,22 @@ export default function OfficialDashboard({ currentUser, onSelectIssue }) {
   };
 
   useEffect(() => {
-    loadDashboardData();
+    loadData();
   }, []);
 
-  // Submit announcement
-  const handleAnnounce = async (e) => {
+  const handleAnnounceSubmit = async (e) => {
     e.preventDefault();
-    setAnnSubmitting(true);
     try {
-      await dbService.createAnnouncement({ title: annTitle, content: annContent }, currentUser);
+      await createAnnouncement({ title: annTitle, content: annContent }, currentUser);
       setAnnTitle("");
       setAnnContent("");
       setAnnSuccess(true);
       setTimeout(() => setAnnSuccess(false), 2000);
     } catch (err) {
       alert("Failed to publish announcement");
-    } finally {
-      setAnnSubmitting(false);
     }
   };
 
-  // Poll options change
   const handleOptionChange = (idx, val) => {
     const opts = [...pollOptions];
     opts[idx] = val;
@@ -82,70 +87,72 @@ export default function OfficialDashboard({ currentUser, onSelectIssue }) {
     }
   };
 
-  // Submit Poll
-  const handleCreatePoll = async (e) => {
+  const handlePollSubmit = async (e) => {
     e.preventDefault();
     const cleanOpts = pollOptions.filter(o => o.trim() !== "");
     if (cleanOpts.length < 2) {
       alert("Please provide at least 2 valid options.");
       return;
     }
-    setPollSubmitting(true);
     try {
-      await dbService.createPoll({
-        title: pollTitle,
-        description: pollDesc,
-        options: cleanOpts
-      }, currentUser);
+      await createPoll({ title: pollTitle, description: pollDesc, options: cleanOpts }, currentUser);
       setPollTitle("");
       setPollDesc("");
       setPollOptions(["", ""]);
       setPollSuccess(true);
       setTimeout(() => setPollSuccess(false), 2000);
     } catch (err) {
-      alert("Failed to create poll");
-    } finally {
-      setPollSubmitting(false);
+      alert("Failed to launch poll.");
     }
   };
 
-  // Statistics Calculations
+  // Calculations
   const totalCount = issues.length;
   const resolvedCount = issues.filter(i => i.status === "resolved").length;
   const pendingCount = issues.filter(i => ["reported", "acknowledged", "in_progress"].includes(i.status)).length;
   const resolutionRate = totalCount > 0 ? Math.round((resolvedCount / totalCount) * 100) : 0;
 
-  // Category chart calculation
-  const categoryChartData = categories.map(cat => {
-    const count = issues.filter(iss => iss.categoryId === cat.id).length;
+  // Chart Data: Category
+  const categoryData = categories.map(cat => {
+    const count = issues.filter(iss => iss.category === cat.id).length;
     return { name: cat.name, count };
+  }).filter(d => d.count > 0);
+
+  // Chart Data: Status
+  const statusCounts = {};
+  issues.forEach(i => {
+    statusCounts[i.status] = (statusCounts[i.status] || 0) + 1;
   });
+  const statusData = Object.keys(statusCounts).map(status => ({
+    name: status.toUpperCase().replace("_", " "),
+    value: statusCounts[status]
+  }));
 
-  const maxCategoryCount = Math.max(...categoryChartData.map(d => d.count), 1);
-
-  // Issues queue filtering
+  // Filters logic
   const filteredIssues = issues.filter(iss => {
     const matchStatus = statusFilter === "all" || iss.status === statusFilter;
     const matchPriority = priorityFilter === "all" || iss.priority === priorityFilter;
-    const matchCategory = categoryFilter === "all" || iss.categoryId === categoryFilter;
+    const matchCategory = categoryFilter === "all" || iss.category === categoryFilter;
     return matchStatus && matchPriority && matchCategory;
   });
 
   return (
     <div className="animate-fade container">
-      {/* Official banner */}
+      {/* Header Banner */}
       <div className="glass-card" style={{
         padding: "1.5rem",
         marginBottom: "2rem",
         background: "linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, transparent 100%)",
         display: "flex",
         justifyContent: "space-between",
-        alignItems: "center"
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: "1rem"
       }}>
         <div>
-          <h2 style={{ fontSize: "1.6rem" }}>Official Panel: {currentUser.name}</h2>
+          <h2 style={{ fontSize: "1.6rem" }}>Official Panel: {currentUser?.fullName || currentUser?.name}</h2>
           <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-            Department: {currentUser.department || "General Administration"} • Chennai Municipal Office
+            Department: {currentUser?.department || "General Administration"} • District Officer
           </p>
         </div>
         <div style={{ display: "flex", gap: "0.5rem" }}>
@@ -161,7 +168,7 @@ export default function OfficialDashboard({ currentUser, onSelectIssue }) {
         </div>
       </div>
 
-      {/* Analytics Row */}
+      {/* Metrics Row */}
       <div className="grid-3" style={{ marginBottom: "2rem" }}>
         <div className="glass-card" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
           <div style={{ background: "var(--success-light)", padding: "1rem", borderRadius: "12px" }}>
@@ -170,7 +177,7 @@ export default function OfficialDashboard({ currentUser, onSelectIssue }) {
           <div>
             <h4 style={{ color: "var(--text-secondary)", fontSize: "0.8rem", textTransform: "uppercase" }}>Resolution Rate</h4>
             <h2 style={{ fontSize: "1.8rem" }}>{resolutionRate}%</h2>
-            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{resolvedCount} of {totalCount} issues closed</p>
+            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{resolvedCount} of {totalCount} tickets resolved</p>
           </div>
         </div>
 
@@ -181,7 +188,7 @@ export default function OfficialDashboard({ currentUser, onSelectIssue }) {
           <div>
             <h4 style={{ color: "var(--text-secondary)", fontSize: "0.8rem", textTransform: "uppercase" }}>Pending Tickets</h4>
             <h2 style={{ fontSize: "1.8rem" }}>{pendingCount}</h2>
-            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Requires active official action</p>
+            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Awaiting resolution progress</p>
           </div>
         </div>
 
@@ -190,110 +197,96 @@ export default function OfficialDashboard({ currentUser, onSelectIssue }) {
             <BarChart2 color="var(--primary)" size={24} />
           </div>
           <div>
-            <h4 style={{ color: "var(--text-secondary)", fontSize: "0.8rem", textTransform: "uppercase" }}>Total Submissions</h4>
+            <h4 style={{ color: "var(--text-secondary)", fontSize: "0.8rem", textTransform: "uppercase" }}>Total District Reports</h4>
             <h2 style={{ fontSize: "1.8rem" }}>{totalCount}</h2>
-            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Registered in civic district</p>
+            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Registered in municipal ward</p>
           </div>
         </div>
       </div>
 
-      {/* Dynamic SVG Charts Section */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem", marginBottom: "2rem" }} className="grid-2">
+      {/* Analytics Charts (using Recharts) */}
+      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "2rem", marginBottom: "2rem" }} className="grid-2">
+        
+        {/* Recharts Bar Chart: Category distribution */}
         <div className="glass-card">
-          <h3 style={{ fontSize: "1.1rem", marginBottom: "1rem" }}>Issues by Administrative Category</h3>
-          
-          <div className="chart-container">
-            <svg viewBox="0 0 400 220" className="chart-svg">
-              {/* Category bars */}
-              {categoryChartData.map((d, idx) => {
-                const barWidth = 40;
-                const gap = 35;
-                const x = 50 + idx * (barWidth + gap);
-                const height = d.count > 0 ? (d.count / maxCategoryCount) * 140 : 5;
-                const y = 170 - height;
-                
-                return (
-                  <g key={idx}>
-                    <rect 
-                      x={x} 
-                      y={y} 
-                      width={barWidth} 
-                      height={height} 
-                      rx={4} 
-                      className="chart-bar" 
-                    />
-                    {/* Count label above bar */}
-                    <text x={x + barWidth/2} y={y - 8} textAnchor="middle" className="chart-text" style={{ fontWeight: "bold" }}>
-                      {d.count}
-                    </text>
-                    {/* Category initials / name */}
-                    <text x={x + barWidth/2} y={190} textAnchor="middle" className="chart-text">
-                      {d.name.split(" ")[0]}
-                    </text>
-                  </g>
-                );
-              })}
-              {/* Ground axis line */}
-              <line x1="20" y1="170" x2="380" y2="170" stroke="var(--border)" strokeWidth="2" />
-            </svg>
+          <h3 style={{ fontSize: "1.1rem", marginBottom: "1.5rem" }}>Issues by Category</h3>
+          <div style={{ width: "100%", height: "250px" }}>
+            {categoryData.length === 0 ? (
+              <p style={{ textAlign: "center", paddingTop: "5rem", color: "var(--text-muted)" }}>No issue data to display</p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={categoryData} margin={{ bottom: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="name" stroke="var(--text-secondary)" tick={{ fontSize: 10 }} />
+                  <YAxis stroke="var(--text-secondary)" />
+                  <Tooltip contentStyle={{ background: "var(--bg-dark)", borderColor: "var(--border)" }} />
+                  <Bar dataKey="count" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
 
+        {/* Recharts Pie Chart: Status Breakdown */}
         <div className="glass-card">
-          <h3 style={{ fontSize: "1.1rem", marginBottom: "1rem" }}>Active Resolution Distribution</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginTop: "1rem" }}>
-            {["reported", "acknowledged", "in_progress", "resolved", "rejected"].map(status => {
-              const count = issues.filter(i => i.status === status).length;
-              const percent = totalCount > 0 ? Math.round((count / totalCount) * 100) : 0;
-              let barColor = "var(--primary)";
-              if (status === "resolved") barColor = "var(--success)";
-              if (status === "rejected") barColor = "var(--danger)";
-              if (status === "in_progress") barColor = "var(--warning)";
-
-              return (
-                <div key={status}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "0.25rem" }}>
-                    <span style={{ textTransform: "capitalize", fontWeight: 600 }}>{status.replace("_", " ")}</span>
-                    <span style={{ color: "var(--text-secondary)" }}>{count} ({percent}%)</span>
-                  </div>
-                  <div style={{ height: "10px", background: "rgba(0,0,0,0.2)", borderRadius: "999px", overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: `${percent}%`, background: barColor, borderRadius: "999px", transition: "width 0.5s ease" }} />
-                  </div>
-                </div>
-              );
-            })}
+          <h3 style={{ fontSize: "1.1rem", marginBottom: "1.5rem" }}>Resolution Breakdown</h3>
+          <div style={{ width: "100%", height: "250px", display: "flex", justifyContent: "center" }}>
+            {statusData.length === 0 ? (
+              <p style={{ textAlign: "center", paddingTop: "5rem", color: "var(--text-muted)" }}>No data available</p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={statusData}
+                    cx="50%"
+                    cy="45%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {statusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ background: "var(--bg-dark)", borderColor: "var(--border)" }} />
+                  <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: "11px" }} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
+
       </div>
 
-      {/* Main Content Area depending on Sub Tab */}
+      {/* TABS INNER RENDERS */}
 
-      {/* TAB: QUEUE TABLE */}
+      {/* QUEUE TABLE */}
       {activeSubTab === "queue" && (
         <div className="glass-card animate-scale" style={{ padding: "1.5rem" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }} className="filters-header">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
             <h3 style={{ fontSize: "1.25rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <Filter size={18} />
               Issue Management Queue
             </h3>
             
-            {/* Table filters */}
-            <div style={{ display: "flex", gap: "0.5rem" }} className="queue-filters">
+            {/* Table Filters */}
+            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
               <select className="form-control" style={{ width: "150px" }} value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
                 <option value="all">All Categories</option>
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
 
-              <select className="form-control" style={{ width: "130px" }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <select className="form-control" style={{ width: "135px" }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                 <option value="all">All Status</option>
-                <option value="reported">Reported</option>
+                <option value="pending">Pending</option>
                 <option value="acknowledged">Acknowledged</option>
                 <option value="in_progress">In Progress</option>
                 <option value="resolved">Resolved</option>
                 <option value="rejected">Rejected</option>
               </select>
 
-              <select className="form-control" style={{ width: "130px" }} value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
+              <select className="form-control" style={{ width: "135px" }} value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
                 <option value="all">All Priority</option>
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
@@ -304,7 +297,9 @@ export default function OfficialDashboard({ currentUser, onSelectIssue }) {
           </div>
 
           <div className="table-responsive">
-            {filteredIssues.length === 0 ? (
+            {loading ? (
+              <p style={{ textAlign: "center", padding: "2rem" }}>Loading issues...</p>
+            ) : filteredIssues.length === 0 ? (
               <p style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>No issues match filters.</p>
             ) : (
               <table className="custom-table">
@@ -322,12 +317,12 @@ export default function OfficialDashboard({ currentUser, onSelectIssue }) {
                 <tbody>
                   {filteredIssues.map((iss) => (
                     <tr key={iss.id}>
-                      <td style={{ fontWeight: 700, fontSize: "0.85rem" }}>{iss.issue_id}</td>
+                      <td style={{ fontWeight: 700, fontSize: "0.85rem" }}>{iss.issueId}</td>
                       <td>
                         <div style={{ fontWeight: 600 }}>{iss.title}</div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{iss.location}</div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{iss.location?.address}</div>
                       </td>
-                      <td style={{ fontSize: "0.85rem" }}>{iss.categoryName}</td>
+                      <td style={{ fontSize: "0.85rem" }}>{iss.categoryName || iss.category}</td>
                       <td>
                         <span className={`badge badge-${iss.priority}`}>{iss.priority}</span>
                       </td>
@@ -338,13 +333,13 @@ export default function OfficialDashboard({ currentUser, onSelectIssue }) {
                         <span className={`badge badge-status-${iss.status}`}>{iss.status.replace("_", " ")}</span>
                       </td>
                       <td>
-                        <button 
+                        <Link 
+                          to={`/issues/${iss.id}`} 
                           className="btn btn-secondary" 
-                          onClick={() => onSelectIssue(iss)}
                           style={{ padding: "0.4rem 0.8rem", fontSize: "0.8rem", gap: "0.3rem" }}
                         >
                           <Eye size={12} /> Manage
-                        </button>
+                        </Link>
                       </td>
                     </tr>
                   ))}
@@ -355,7 +350,7 @@ export default function OfficialDashboard({ currentUser, onSelectIssue }) {
         </div>
       )}
 
-      {/* TAB: ANNOUNCEMENT WRITER */}
+      {/* ANNOUNCEMENT PUBLISHER */}
       {activeSubTab === "announce" && (
         <div className="glass-card animate-scale" style={{ maxWidth: "600px", margin: "0 auto", padding: "2rem" }}>
           <h3 style={{ fontSize: "1.4rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -376,23 +371,23 @@ export default function OfficialDashboard({ currentUser, onSelectIssue }) {
             </div>
           )}
 
-          <form onSubmit={handleAnnounce}>
+          <form onSubmit={handleAnnounceSubmit}>
             <div className="form-group">
               <label className="form-label">Announcement Title</label>
               <input 
                 type="text"
                 className="form-control"
-                placeholder="e.g., Water Supply Suspension Ward 4"
+                placeholder="e.g., Scheduled Maintenance Shutdown Anna Salai"
                 value={annTitle}
                 onChange={(e) => setAnnTitle(e.target.value)}
                 required
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Content details</label>
+              <label className="form-label">Content Details</label>
               <textarea 
-                className="form-control"
-                placeholder="Details of the announcement (dates, affected streets, instructions)..."
+                className="form-control" 
+                placeholder="Details of the announcement (dates, instructions, affected streets)..."
                 value={annContent}
                 onChange={(e) => setAnnContent(e.target.value)}
                 style={{ minHeight: "150px" }}
@@ -403,20 +398,20 @@ export default function OfficialDashboard({ currentUser, onSelectIssue }) {
               <button type="button" className="btn btn-secondary" onClick={() => setActiveSubTab("queue")} style={{ flex: 1 }}>
                 Cancel
               </button>
-              <button type="submit" className="btn btn-primary" style={{ flex: 2 }} disabled={annSubmitting}>
-                {annSubmitting ? "Publishing..." : "Publish Announcement"}
+              <button type="submit" className="btn btn-primary" style={{ flex: 2 }}>
+                Publish Announcement
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* TAB: POLL CREATOR */}
+      {/* POLL LAUNCHER */}
       {activeSubTab === "poll" && (
         <div className="glass-card animate-scale" style={{ maxWidth: "600px", margin: "0 auto", padding: "2rem" }}>
           <h3 style={{ fontSize: "1.4rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <PlusCircle color="var(--primary)" />
-            Create Civic Preference Poll
+            Launch Civic Priority Poll
           </h3>
 
           {pollSuccess && (
@@ -432,24 +427,24 @@ export default function OfficialDashboard({ currentUser, onSelectIssue }) {
             </div>
           )}
 
-          <form onSubmit={handleCreatePoll}>
+          <form onSubmit={handlePollSubmit}>
             <div className="form-group">
-              <label className="form-label">Poll Question / Title</label>
+              <label className="form-label">Poll Question</label>
               <input 
                 type="text"
                 className="form-control"
-                placeholder="e.g., Which road should we prioritize for repaving?"
+                placeholder="e.g., Which civic project should be funded next in Ward 4?"
                 value={pollTitle}
                 onChange={(e) => setPollTitle(e.target.value)}
                 required
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Description / Context</label>
+              <label className="form-label">Context / Description</label>
               <input 
                 type="text"
                 className="form-control"
-                placeholder="Context for citizens to vote on..."
+                placeholder="Brief context details for voters..."
                 value={pollDesc}
                 onChange={(e) => setPollDesc(e.target.value)}
               />
@@ -487,7 +482,7 @@ export default function OfficialDashboard({ currentUser, onSelectIssue }) {
                   className="btn btn-secondary" 
                   style={{ marginTop: "0.5rem", width: "100%", fontSize: "0.85rem", padding: "0.5rem" }}
                 >
-                  Add Another Option
+                  Add Option Field
                 </button>
               )}
             </div>
@@ -496,21 +491,13 @@ export default function OfficialDashboard({ currentUser, onSelectIssue }) {
               <button type="button" className="btn btn-secondary" onClick={() => setActiveSubTab("queue")} style={{ flex: 1 }}>
                 Cancel
               </button>
-              <button type="submit" className="btn btn-primary" style={{ flex: 2 }} disabled={pollSubmitting}>
-                {pollSubmitting ? "Creating..." : "Launch Poll"}
+              <button type="submit" className="btn btn-primary" style={{ flex: 2 }}>
+                Launch Poll
               </button>
             </div>
           </form>
         </div>
       )}
-
-      <style>{`
-        @media (max-width: 768px) {
-          .filters-header { flex-direction: column; align-items: flex-start !important; gap: 1rem; }
-          .queue-filters { width: 100%; flex-wrap: wrap; }
-          .queue-filters select { width: 100% !important; }
-        }
-      `}</style>
     </div>
   );
 }

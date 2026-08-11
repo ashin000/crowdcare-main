@@ -12,80 +12,101 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Checks if the user has the 'official' role in the database
-    function isOfficial() {
-      return isAuthenticated() && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'official';
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function getUserRole() {
+      return isAuthenticated() && getUserData().role;
+    }
+
+    function isAuthority() {
+      return isAuthenticated() && (getUserRole() == 'authority' || getUserRole() == 'official');
+    }
+
+    function isVolunteer() {
+      return isAuthenticated() && getUserRole() == 'volunteer';
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
     }
 
     // Users Collection
-    // - Anyone authenticated can read user profiles (to display names/roles).
-    // - A user can only create or update their own user profile document.
+    // - Anyone authenticated can read user profiles.
+    // - Users can create/update their own profile.
+    // - Admins can update roles and promote users.
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow create, update: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
     }
 
     // Categories Collection
     // - Anyone authenticated can read categories.
-    // - Only officials or administrators can modify categories.
+    // - Only admins can create/modify categories.
     match /categories/{categoryId} {
       allow read: if isAuthenticated();
-      allow write: if isOfficial();
+      allow write: if isAdmin();
     }
 
     // Issues Collection
     // - Anyone authenticated can read issues.
     // - Any authenticated user can create/report an issue.
-    // - Any authenticated user can update issues (e.g. upvotes, views, status, or assigning).
+    // - Any authenticated user can upvote/view/edit basic fields.
+    // - Admins can delete issues.
     match /issues/{issueId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
       allow update: if isAuthenticated();
-    }
+      allow delete: if isAdmin();
 
-    // Updates (Issue status history) Collection
-    // - Anyone authenticated can read updates.
-    // - Only officials can create or write status updates.
-    match /updates/{updateId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isOfficial();
-    }
+      // Comments Subcollection
+      match /comments/{commentId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      }
 
-    // Comments Collection
-    // - Anyone authenticated can read comments.
-    // - Any authenticated user can post a comment.
-    // - Only the comment author can update or delete their comment.
-    match /comments/{commentId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // Status History Subcollection
+      match /statusHistory/{historyId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() && (isAuthority() || isVolunteer() || isAdmin());
+      }
     }
 
     // Announcements Collection
     // - Anyone authenticated can read announcements.
-    // - Only officials can create or update announcements.
+    // - Authorities and Admins can write announcements.
     match /announcements/{announcementId} {
       allow read: if isAuthenticated();
-      allow create, update: if isOfficial();
+      allow create, update, delete: if isAuthority() || isAdmin();
     }
 
     // Polls Collection
     // - Anyone authenticated can read polls.
-    // - Only officials can create polls.
+    // - Authorities and Admins can create or delete polls.
     // - Any authenticated user can vote in polls (update votes/voters).
     match /polls/{pollId} {
       allow read: if isAuthenticated();
-      allow create: if isOfficial();
+      allow create, delete: if isAuthority() || isAdmin();
       allow update: if isAuthenticated();
     }
 
     // Notifications Collection
-    // - Users can read and update (e.g. mark read) their own notifications.
-    // - Any authenticated user can create a notification (e.g. when updating an issue).
+    // - Users can read and update (mark read) their own notifications.
+    // - Any authenticated user can create a notification.
     match /notifications/{notificationId} {
       allow read, update: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
       allow create: if isAuthenticated();
+    }
+
+    // Audit Logs Collection
+    // - Only admins can read audit logs.
+    // - Authorities and Admins can create log entries.
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated() && (isAuthority() || isAdmin());
     }
   }
 }
