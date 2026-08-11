@@ -4,20 +4,20 @@ import { authService } from "../services/firebase";
 
 export default function Navbar({ currentUser, onLogout, toggleNotifDrawer, unreadNotifCount, activeTab, setActiveTab }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [theme, setTheme] = useState("dark");
+  const [theme, setTheme] = useState("light");
 
   useEffect(() => {
-    // Set default dark theme class
-    document.body.classList.remove("light-mode");
+    // Set default light theme class
+    document.body.classList.add("light-mode");
   }, []);
 
   const toggleTheme = () => {
-    if (theme === "dark") {
-      document.body.classList.add("light-mode");
-      setTheme("light");
-    } else {
+    if (theme === "light") {
       document.body.classList.remove("light-mode");
       setTheme("dark");
+    } else {
+      document.body.classList.add("light-mode");
+      setTheme("light");
     }
   };
 

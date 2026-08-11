@@ -1,15 +1,18 @@
 import React from "react";
 import { ShieldAlert, TrendingUp, BarChart2, Megaphone, ArrowRight } from "lucide-react";
+import horizontalBgImg from "../assets/horizontal_bg.png";
 
 export default function LandingPage({ onGetStarted }) {
   return (
     <div className="animate-fade" style={{ paddingBottom: "4rem" }}>
       {/* Hero Section */}
       <header className="glass-card" style={{
-        padding: "4rem 2rem",
-        textAlign: "center",
-        background: "linear-gradient(135deg, rgba(43, 103, 119, 0.08) 0%, rgba(82, 171, 152, 0.04) 100%)",
-        border: "1px solid var(--border)",
+        padding: "5.5rem 2rem",
+        backgroundImage: `linear-gradient(135deg, rgba(5, 5, 26, 0.6) 0%, rgba(5, 5, 26, 0.48) 100%), url(${horizontalBgImg})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        border: "1px solid rgba(255, 255, 255, 0.1)",
         borderRadius: "24px",
         marginBottom: "3rem",
         position: "relative",
@@ -22,35 +25,61 @@ export default function LandingPage({ onGetStarted }) {
           left: "-50%",
           right: "-50%",
           bottom: "-50%",
-          background: "radial-gradient(circle, rgba(43, 103, 119, 0.08) 0%, transparent 60%)",
+          background: "radial-gradient(circle, rgba(255, 153, 51, 0.08) 0%, transparent 60%)",
           pointerEvents: "none",
           zIndex: 0
         }} />
 
-        <div style={{ position: "relative", zIndex: 1 }}>
+        <div style={{ position: "relative", zIndex: 1, maxWidth: "800px", margin: "0 auto", textAlign: "center" }}>
           <h1 style={{ 
-            fontSize: "3.5rem", 
-            lineHeight: 1.1, 
+            fontSize: "3.6rem", 
+            lineHeight: 1.15, 
             marginBottom: "1.5rem",
-            color: "var(--primary)"
+            color: "#FF9933", // Saffron
+            fontFamily: "var(--font-heading)",
+            textShadow: "0 2px 10px rgba(0, 0, 0, 0.95), 0 1px 3px rgba(0, 0, 0, 0.85)"
           }}>
             Bridge the Gap Between <br />
-            <span style={{ color: "var(--success)" }}>Citizens & Government</span>
+            <span style={{ color: "#138808", textShadow: "0 2px 10px rgba(0, 0, 0, 0.95), 0 1px 3px rgba(0, 0, 0, 0.85)" }}>Citizens & Government</span>
           </h1>
           <p style={{ 
             fontSize: "1.25rem", 
-            color: "var(--text-secondary)", 
+            color: "#FFFFFF", // White text
+            fontWeight: "600",
             maxWidth: "700px", 
             margin: "0 auto 2.5rem",
-            lineHeight: 1.6
+            lineHeight: 1.6,
+            textShadow: "0 2px 10px rgba(0, 0, 0, 0.95), 0 1px 3px rgba(0, 0, 0, 0.85)"
           }}>
             CrowdCare is a transparent civic engagement portal allowing citizens to report local infrastructure issues, vote on municipal priorities, and monitor resolution progress in real-time.
           </p>
-          <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
-            <button className="btn btn-primary" onClick={onGetStarted} style={{ padding: "0.85rem 2rem", fontSize: "1.05rem" }}>
+          <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
+            <button 
+              className="btn" 
+              onClick={onGetStarted} 
+              style={{ 
+                background: "#FF9933", // Saffron
+                color: "#FFFFFF",
+                boxShadow: "0 4px 12px rgba(255, 153, 51, 0.2)",
+                padding: "0.85rem 2rem", 
+                fontSize: "1.05rem" 
+              }}
+            >
               Get Started Now <ArrowRight size={18} />
             </button>
-            <a href="#features" className="btn btn-secondary" style={{ padding: "0.85rem 2rem", fontSize: "1.05rem", display: "inline-flex", alignItems: "center" }}>
+            <a 
+              href="#features" 
+              className="btn" 
+              style={{ 
+                background: "rgba(255, 255, 255, 0.08)",
+                border: "1px solid rgba(255, 255, 255, 0.15)",
+                color: "#FFFFFF",
+                padding: "0.85rem 2rem", 
+                fontSize: "1.05rem", 
+                display: "inline-flex", 
+                alignItems: "center" 
+              }}
+            >
               Explore Features
             </a>
           </div>

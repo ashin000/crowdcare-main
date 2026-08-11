@@ -1,50 +1,67 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-  /* Color Palette */
-  --primary: #2b6777;
-  --primary-hover: #1e4954;
-  --primary-light: rgba(43, 103, 119, 0.15);
-  --success: #52ab98;
-  --success-light: rgba(82, 171, 152, 0.12);
-  --warning: #df9008;
-  --warning-light: rgba(223, 144, 8, 0.1);
+  /* Color Palette - Dark Theme defaults */
+  --primary: #FF9933; /* Saffron accent */
+  --primary-hover: #e6801a;
+  --primary-light: rgba(255, 153, 51, 0.15);
+  --success: #138808; /* Green */
+  --success-light: rgba(19, 136, 8, 0.15);
+  --warning: #FF9933;
+  --warning-light: rgba(255, 153, 51, 0.1);
   --danger: #ef4444;
   --danger-light: rgba(239, 68, 68, 0.1);
-  --info: #c8d8e4;
-  --info-light: rgba(200, 216, 228, 0.15);
+  --info: #000080;
+  --info-light: rgba(0, 0, 128, 0.15);
   
   /* Neutral Dark Theme defaults */
-  --bg-dark: #0e1f24;
-  --bg-darker: #071114;
-  --bg-card: rgba(14, 31, 36, 0.5);
-  --bg-card-hover: rgba(14, 31, 36, 0.7);
-  --text-primary: #f2f2f2;
-  --text-secondary: #c8d8e4;
-  --text-muted: #6f888f;
-  --border: rgba(200, 216, 228, 0.1);
-  --border-focus: rgba(82, 171, 152, 0.4);
-  --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  --glow-primary: 0 0 20px rgba(43, 103, 119, 0.25);
+  --bg-dark: #05051a;
+  --bg-darker: #02020a;
+  --bg-card: rgba(5, 5, 26, 0.65);
+  --bg-card-hover: rgba(5, 5, 26, 0.85);
+  --text-primary: #f2f2f8;
+  --text-secondary: #c0c0f0;
+  --text-muted: #7a7ab8;
+  --border: rgba(200, 216, 228, 0.12);
+  --border-focus: rgba(255, 153, 51, 0.4);
+  --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  --glow-primary: 0 0 20px rgba(255, 153, 51, 0.2);
   
+  --hero-overlay-start: rgba(5, 5, 26, 0.58);
+  --hero-overlay-end: rgba(5, 5, 26, 0.48);
+  --text-shadow: 0 2px 10px rgba(0, 0, 0, 0.95), 0 1px 3px rgba(0, 0, 0, 0.85);
+
   /* Font Stacks */
   --font-main: 'Plus Jakarta Sans', sans-serif;
   --font-heading: 'Outfit', sans-serif;
 }
 
-/* Light Theme Variables */
+/* Light Theme Variables - Indian Flag Inspired */
 body.light-mode {
-  --bg-dark: #f2f2f2;
-  --bg-darker: #c8d8e4;
-  --bg-card: rgba(255, 255, 255, 0.8);
-  --bg-card-hover: rgba(255, 255, 255, 0.95);
-  --text-primary: #2b6777;
-  --text-secondary: #3c7d8e;
-  --text-muted: #52ab98;
-  --border: rgba(43, 103, 119, 0.15);
-  --border-focus: rgba(43, 103, 119, 0.5);
-  --shadow: 0 8px 32px 0 rgba(43, 103, 119, 0.1);
-  --glow-primary: 0 0 20px rgba(43, 103, 119, 0.15);
+  --bg-dark: #ffffff;
+  --bg-darker: #f7f9fc;
+  --bg-card: #ffffff;
+  --bg-card-hover: rgba(255, 153, 51, 0.01);
+  --text-primary: #000080; /* Navy Blue */
+  --text-secondary: #222288;
+  --text-muted: #6666b3;
+  --border: rgba(0, 0, 128, 0.12);
+  --border-focus: rgba(0, 0, 128, 0.35);
+  --shadow: 0 8px 30px rgba(0, 0, 80, 0.06);
+  --glow-primary: 0 0 20px rgba(0, 0, 128, 0.08);
+  --primary: #000080; /* Navy Blue */
+  --primary-hover: #00005a;
+  --primary-light: rgba(0, 0, 128, 0.08);
+  --success: #138808; /* Green */
+  --success-light: rgba(19, 136, 8, 0.1);
+  --warning: #FF9933; /* Saffron */
+  --warning-light: rgba(255, 153, 51, 0.1);
+  --info: #000080;
+  --info-light: rgba(0, 0, 128, 0.05);
+
+  --hero-overlay-start: rgba(255, 255, 255, 0.58);
+  --hero-overlay-end: rgba(255, 255, 255, 0.48);
+  --text-shadow: 0 2px 10px rgba(255, 255, 255, 0.95), 0 1px 4px rgba(255, 255, 255, 0.9);
 }
 
 /* Base resets */
@@ -58,8 +75,8 @@ body {
   font-family: var(--font-main);
   background-color: var(--bg-darker);
   background-image: 
-    radial-gradient(at 0% 0%, rgba(43, 103, 119, 0.15) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(82, 171, 152, 0.1) 0px, transparent 50%);
+    radial-gradient(at 0% 0%, var(--primary-light) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, var(--success-light) 0px, transparent 50%);
   color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
@@ -148,27 +165,31 @@ body.light-mode .glass-card:hover {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--success) 100%);
+  background: var(--primary);
   color: white;
-  box-shadow: 0 4px 14px rgba(43, 103, 119, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 128, 0.12);
 }
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(43, 103, 119, 0.45);
-  filter: brightness(1.1);
+  box-shadow: 0 6px 16px rgba(0, 0, 128, 0.2);
+  filter: brightness(1.15);
 }
 .btn-primary:active {
   transform: translateY(1px);
 }
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--primary-light);
   border: 1px solid var(--border);
   color: var(--text-primary);
 }
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: var(--text-secondary);
+  background: rgba(0, 0, 128, 0.12);
+  border-color: var(--primary);
+}
+
+body.light-mode .btn-secondary:hover {
+  background: rgba(0, 0, 128, 0.1);
 }
 
 .btn-outline {
@@ -178,7 +199,7 @@ body.light-mode .glass-card:hover {
 }
 .btn-outline:hover {
   background: var(--primary-light);
-  color: var(--text-primary);
+  color: var(--primary);
 }
 
 .btn-danger {
@@ -248,15 +269,15 @@ textarea.form-control {
   text-transform: capitalize;
 }
 
-.badge-low { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
-.badge-medium { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
-.badge-high { background: rgba(249, 115, 22, 0.15); color: #fb923c; border: 1px solid rgba(249, 115, 22, 0.3); }
-.badge-critical { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+.badge-low { background: rgba(19, 136, 8, 0.1); color: #138808; border: 1px solid rgba(19, 136, 8, 0.2); }
+.badge-medium { background: rgba(255, 153, 51, 0.1); color: #e6801a; border: 1px solid rgba(255, 153, 51, 0.2); }
+.badge-high { background: rgba(255, 153, 51, 0.15); color: #cc6600; border: 1px solid rgba(255, 153, 51, 0.3); }
+.badge-critical { background: rgba(220, 38, 38, 0.1); color: #dc2626; border: 1px solid rgba(220, 38, 38, 0.2); }
 
-.badge-status-reported { background: var(--primary-light); color: var(--primary); border: 1px solid rgba(43, 103, 119, 0.3); }
-.badge-status-acknowledged { background: rgba(200, 216, 228, 0.3); color: var(--primary); border: 1px solid rgba(43, 103, 119, 0.3); }
-.badge-status-in_progress { background: var(--warning-light); color: var(--warning); border: 1px solid rgba(223, 144, 8, 0.3); }
-.badge-status-resolved { background: var(--success-light); color: var(--success); border: 1px solid rgba(82, 171, 152, 0.3); }
+.badge-status-reported { background: var(--primary-light); color: var(--primary); border: 1px solid var(--border); }
+.badge-status-acknowledged { background: var(--info-light); color: var(--primary); border: 1px solid var(--border); }
+.badge-status-in_progress { background: var(--warning-light); color: var(--warning); border: 1px solid rgba(255, 153, 51, 0.3); }
+.badge-status-resolved { background: var(--success-light); color: var(--success); border: 1px solid rgba(19, 136, 8, 0.3); }
 .badge-status-rejected { background: var(--danger-light); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); }
 .badge-status-closed { background: rgba(111, 136, 143, 0.15); color: var(--text-muted); border: 1px solid rgba(111, 136, 143, 0.3); }
 
