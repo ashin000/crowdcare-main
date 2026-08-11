@@ -1,75 +1,62 @@
 import React, { useState, useEffect } from "react";
-import { X, Send, User, Calendar, MapPin, Tag, RefreshCw, MessageSquare, CheckCircle, ShieldAlert } from "lucide-react";
+import { X, MapPin, Calendar, Eye, ThumbsUp, Tag, MessageSquare, Send, RefreshCw, User, ShieldCheck } from "lucide-react";
 import { dbService } from "../services/firebase";
 
 export default function IssueDetail({ issue, currentUser, onClose, onRefresh }) {
-  const [updates, setUpdates] = useState([]);
   const [comments, setComments] = useState([]);
-  const [newComment, setNewComment] = useState("");
-  const [commentSubmitting, setCommentSubmitting] = useState(false);
-
-  // Status updating form states (Officials only)
-  const [newStatus, setNewStatus] = useState(issue.status);
-  const [updateDesc, setUpdateDesc] = useState("");
-  const [statusSubmitting, setStatusSubmitting] = useState(false);
-
-  const loadIssueDetails = async () => {
-    try {
-      // Increment views count in background
-      dbService.incrementViewCount(issue.id);
-      
-      const [allUpdates, allComments] = await Promise.all([
-        dbService.getIssueUpdates(issue.id),
-        dbService.getComments(issue.id)
-      ]);
-      setUpdates(allUpdates);
-      setComments(allComments);
-    } catch (err) {
-      console.error("Error loading issue details:", err);
-    }
-  };
+  const [updates, setUpdates] = useState([]);
+  const [commentText, setCommentText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadIssueDetails();
+    loadDetail();
   }, [issue.id]);
+
+  useEffect(() => {
+    dbService.incrementViewCount(issue.id).catch(console.error);
+  }, [issue.id]);
+
+  const loadDetail = async () => {
+    try {
+      const [commentList, updateList] = await Promise.all([
+        dbService.getComments(issue.id),
+        dbService.getIssueUpdates(issue.id)
+      ]);
+      setComments(commentList);
+      setUpdates(updateList);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAddComment = async (e) => {
     e.preventDefault();
-    if (newComment.trim() === "") return;
-    setCommentSubmitting(true);
+    if (!commentText.trim()) return;
+    setSending(true);
     try {
-      const added = await dbService.addComment(issue.id, newComment, currentUser);
-      setComments([...comments, added]);
-      setNewComment("");
+      await dbService.addComment(issue.id, commentText.trim(), currentUser);
+      setCommentText("");
+      loadDetail();
     } catch (err) {
-      console.error(err);
-      alert("Failed to submit comment");
+      alert(err.message || "Failed to add comment");
     } finally {
-      setCommentSubmitting(false);
+      setSending(false);
     }
   };
 
-  const handleUpdateStatus = async (e) => {
-    e.preventDefault();
-    if (updateDesc.trim() === "") {
-      alert("Please provide progress details for status update.");
-      return;
-    }
-    setStatusSubmitting(true);
+  const handleVote = async () => {
     try {
-      await dbService.updateIssueStatus(issue.id, newStatus, updateDesc, currentUser);
-      setUpdateDesc("");
-      
-      // Reload details and trigger parent state refresh
-      await loadIssueDetails();
-      if (onRefresh) onRefresh();
+      await dbService.upvoteIssue(issue.id, currentUser.uid);
+      onRefresh();
     } catch (err) {
-      console.error(err);
-      alert("Failed to update status");
-    } finally {
-      setStatusSubmitting(false);
+      alert(err.message || "Failed to upvote issue");
     }
   };
+
+  const isUpvoted = currentUser ? issue.upvotedBy?.includes(currentUser.uid) : false;
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -81,250 +68,235 @@ export default function IssueDetail({ issue, currentUser, onClose, onRefresh }) 
     });
   };
 
-  // Timeline helper
-  const statuses = ["reported", "acknowledged", "in_progress", "resolved"];
-  const currentStatusIndex = statuses.indexOf(issue.status);
-
   return (
-    <div className="modal-backdrop animate-fade">
-      <div className="modal-content animate-scale" style={{ width: "100%", maxWidth: "800px" }}>
-        
+    <div className="modal-backdrop animate-fade" onClick={onClose}>
+      <div className="modal-content animate-scale" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "800px" }}>
         {/* Header */}
-        <div className="modal-header">
+        <div className="modal-header" style={{ position: "sticky", top: 0, zIndex: 10, background: "var(--bg-dark)" }}>
           <div>
-            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: 700 }}>{issue.issue_id}</span>
-            <h2 style={{ fontSize: "1.4rem", marginTop: "0.25rem" }}>{issue.title}</h2>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap", marginBottom: "0.5rem" }}>
+              <span className={`badge badge-${issue.priority}`}>{issue.priority}</span>
+              <span className={`badge badge-status-${issue.status}`}>{issue.status.replace("_", " ")}</span>
+              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontFamily: "var(--font-heading)", fontWeight: 700 }}>
+                {issue.issue_id}
+              </span>
+            </div>
+            <h2 style={{ fontSize: "1.5rem", lineHeight: 1.3 }}>{issue.title}</h2>
           </div>
-          <button 
-            className="btn btn-secondary" 
-            onClick={onClose}
-            style={{ padding: "0.4rem", borderRadius: "50%", minWidth: "36px", height: "36px" }}
-          >
+          <button className="btn btn-secondary" onClick={onClose} style={{ padding: "0.5rem", borderRadius: "50%", minWidth: "40px", height: "40px" }}>
             <X size={18} />
           </button>
         </div>
 
-        {/* Body */}
         <div className="modal-body">
-          <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "2rem" }} className="grid-2">
-            
-            {/* Left side: Information, media, comments */}
+          {/* Image */}
+          {issue.imageUrl && (
+            <div style={{
+              width: "100%",
+              height: "280px",
+              borderRadius: "14px",
+              overflow: "hidden",
+              marginBottom: "1.5rem",
+              background: "#1e293b"
+            }}>
+              <img
+                src={issue.imageUrl}
+                alt={issue.title}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            </div>
+          )}
+
+          {/* Metadata */}
+          <div style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "1.5rem",
+            padding: "1rem 0",
+            borderTop: "1px solid var(--border)",
+            borderBottom: "1px solid var(--border)",
+            marginBottom: "1.5rem",
+            fontSize: "0.85rem",
+            color: "var(--text-secondary)"
+          }}>
+            <span style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <MapPin size={15} color="var(--primary)" /> {issue.location}
+            </span>
+            <span style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <Calendar size={15} /> {formatDate(issue.reportedAt)}
+            </span>
+            <span style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <Eye size={15} /> {issue.viewsCount} views
+            </span>
+            <span style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <Tag size={15} /> {issue.categoryName}
+            </span>
+          </div>
+
+          {/* Reporter info */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.75rem",
+            padding: "1rem",
+            background: "var(--bg-card)",
+            border: "1px solid var(--border)",
+            borderRadius: "12px",
+            marginBottom: "1.5rem"
+          }}>
+            <div style={{
+              width: "40px",
+              height: "40px",
+              borderRadius: "50%",
+              background: "var(--primary-light)",
+              border: "1px solid var(--primary)",
+              color: "var(--primary)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontWeight: "bold"
+            }}>
+              <User size={18} />
+            </div>
             <div>
-              {/* Image */}
-              <div style={{
-                width: "100%",
-                height: "220px",
-                borderRadius: "12px",
-                overflow: "hidden",
-                marginBottom: "1rem",
-                background: "#1e293b"
-              }}>
-                <img 
-                  src={issue.imageUrl} 
-                  alt={issue.title}
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }} 
-                />
-              </div>
-
-              {/* Location and Category details */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.9rem" }}>
-                  <MapPin size={16} color="var(--primary)" />
-                  <span>{issue.location}</span>
+              {/* Officials see the full name; citizens/guests see only the user ID */}
+              {currentUser?.role === "official" ? (
+                <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>{issue.citizenName}</div>
+              ) : (
+                <div style={{ fontWeight: 600, fontSize: "0.9rem", fontFamily: "var(--font-heading)", letterSpacing: "0.03em" }}>
+                  {issue.citizenId
+                    ? `User #${issue.citizenId.slice(0, 8).toUpperCase()}`
+                    : "Anonymous"}
                 </div>
-                <div style={{ display: "flex", gap: "1rem" }}>
-                  <span style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                    <Tag size={14} />
-                    {issue.categoryName}
-                  </span>
-                  <span style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                    <Calendar size={14} />
-                    Reported: {new Date(issue.reportedAt).toLocaleDateString()}
-                  </span>
-                </div>
-                <div>
-                  <span className={`badge badge-${issue.priority}`}>Priority: {issue.priority}</span>
-                  <span className={`badge badge-status-${issue.status}`} style={{ marginLeft: "0.5rem" }}>
-                    Status: {issue.status.replace("_", " ")}
-                  </span>
-                </div>
-              </div>
-
-              {/* Description */}
-              <div style={{ marginBottom: "2rem" }}>
-                <h4 style={{ fontSize: "1rem", marginBottom: "0.5rem" }}>Description</h4>
-                <p style={{ fontSize: "0.9rem", color: "var(--text-secondary)", lineHeight: 1.5 }}>
-                  {issue.description}
-                </p>
-              </div>
-
-              {/* Comments Section */}
-              <div className="comments-container">
-                <h3 style={{ fontSize: "1.1rem", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                  <MessageSquare size={16} />
-                  Community Discussion
-                </h3>
-
-                {/* Add Comment Form */}
-                <form onSubmit={handleAddComment} style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem" }}>
-                  <input 
-                    type="text" 
-                    className="form-control" 
-                    placeholder="Ask a question or comment on this issue..."
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    required
-                  />
-                  <button type="submit" className="btn btn-primary" style={{ padding: "0.75rem" }} disabled={commentSubmitting}>
-                    <Send size={16} />
-                  </button>
-                </form>
-
-                {/* Comments List */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                  {comments.length === 0 ? (
-                    <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", textAlign: "center" }}>No comments yet. Start the conversation!</p>
-                  ) : (
-                    comments.map(c => (
-                      <div key={c.id} className={`comment-card ${c.isOfficial ? "official-comment" : ""}`}>
-                        <div className="comment-header">
-                          <span style={{ fontWeight: 700, display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                            <User size={12} />
-                            {c.userName}
-                            {c.isOfficial && <span className="badge badge-low" style={{ textTransform: "uppercase", fontSize: "0.6rem", padding: "0.1rem 0.4rem" }}>Official Reply</span>}
-                          </span>
-                          <span style={{ color: "var(--text-muted)", fontSize: "0.75rem" }}>{formatDate(c.createdAt)}</span>
-                        </div>
-                        <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: 1.4 }}>{c.text}</p>
-                      </div>
-                    ))
-                  )}
-                </div>
+              )}
+              <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                Reported {formatDate(issue.reportedAt)}
               </div>
             </div>
-
-            {/* Right side: Status Updates timeline & Admin forms */}
-            <div>
-              {/* Progress Timeline */}
-              <div className="glass-card" style={{ marginBottom: "1.5rem", padding: "1.25rem" }}>
-                <h3 style={{ fontSize: "1.1rem", marginBottom: "1rem" }}>Resolution Progress</h3>
-                
-                <div className="timeline">
-                  {/* Reported Status */}
-                  <div className={`timeline-item ${currentStatusIndex >= 0 ? "active" : ""}`}>
-                    <div className="timeline-dot" />
-                    <div className="timeline-content">
-                      <div style={{ fontWeight: 700, fontSize: "0.85rem" }}>Report Filed</div>
-                      <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{formatDate(issue.reportedAt)}</div>
-                    </div>
-                  </div>
-
-                  {/* Acknowledged Status */}
-                  <div className={`timeline-item ${currentStatusIndex >= 1 ? "active" : ""}`}>
-                    <div className="timeline-dot" />
-                    <div className="timeline-content">
-                      <div style={{ fontWeight: 700, fontSize: "0.85rem" }}>Acknowledged & Assigned</div>
-                      {updates.find(u => u.status === "acknowledged") && (
-                        <>
-                          <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.25rem" }}>
-                            {updates.find(u => u.status === "acknowledged").description}
-                          </p>
-                          <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
-                            {formatDate(updates.find(u => u.status === "acknowledged").createdAt)} by {updates.find(u => u.status === "acknowledged").officialName}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* In Progress Status */}
-                  <div className={`timeline-item ${currentStatusIndex >= 2 ? "active" : ""}`}>
-                    <div className="timeline-dot" />
-                    <div className="timeline-content">
-                      <div style={{ fontWeight: 700, fontSize: "0.85rem" }}>Work In Progress</div>
-                      {updates.find(u => u.status === "in_progress") && (
-                        <>
-                          <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.25rem" }}>
-                            {updates.find(u => u.status === "in_progress").description}
-                          </p>
-                          <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
-                            {formatDate(updates.find(u => u.status === "in_progress").createdAt)} by {updates.find(u => u.status === "in_progress").officialName}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Resolved Status */}
-                  <div className={`timeline-item ${currentStatusIndex >= 3 ? "active" : ""}`}>
-                    <div className="timeline-dot" />
-                    <div className="timeline-content">
-                      <div style={{ fontWeight: 700, fontSize: "0.85rem" }}>Issue Resolved</div>
-                      {updates.find(u => u.status === "resolved") && (
-                        <>
-                          <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.25rem" }}>
-                            {updates.find(u => u.status === "resolved").description}
-                          </p>
-                          <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
-                            {formatDate(updates.find(u => u.status === "resolved").createdAt)} by {updates.find(u => u.status === "resolved").officialName}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
+            {issue.assignedOfficialName && (
+              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <ShieldCheck size={18} color="var(--success)" />
+                <div>
+                  <div style={{ fontSize: "0.8rem", fontWeight: 600 }}>{issue.assignedOfficialName}</div>
+                  <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>Assigned Official</div>
                 </div>
               </div>
+            )}
+          </div>
 
-              {/* Status Update Form (Officials Only) */}
-              {currentUser && currentUser.role === "official" && (
-                <div className="glass-card animate-scale" style={{ border: "1px solid var(--success)", background: "rgba(16, 185, 129, 0.02)" }}>
-                  <h3 style={{ fontSize: "1.1rem", marginBottom: "1rem", color: "var(--success)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                    <RefreshCw size={16} />
-                    Update Issue Status
-                  </h3>
-                  
-                  <form onSubmit={handleUpdateStatus}>
-                    <div className="form-group">
-                      <label className="form-label">Set Status</label>
-                      <select 
-                        className="form-control" 
-                        value={newStatus}
-                        onChange={(e) => setNewStatus(e.target.value)}
-                      >
-                        <option value="reported">Reported</option>
-                        <option value="acknowledged">Acknowledged</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="resolved">Resolved</option>
-                        <option value="rejected">Rejected</option>
-                        <option value="closed">Closed</option>
-                      </select>
+          {/* Description */}
+          <div style={{ marginBottom: "2rem" }}>
+            <h3 style={{ fontSize: "1.1rem", marginBottom: "0.75rem" }}>Description</h3>
+            <p style={{ fontSize: "0.95rem", color: "var(--text-secondary)", lineHeight: 1.7, whiteSpace: "pre-line" }}>
+              {issue.description}
+            </p>
+          </div>
+
+          {/* Status Timeline */}
+          {!loading && updates.length > 0 && (
+            <div style={{ marginBottom: "2rem" }}>
+              <h3 style={{ fontSize: "1.1rem", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <RefreshCw size={18} color="var(--success)" /> Status Timeline
+              </h3>
+              <div className="timeline">
+                {updates.map((update, idx) => (
+                  <div key={update.id} className={`timeline-item ${idx === 0 ? "active" : ""}`}>
+                    <div className="timeline-dot" />
+                    <div className="timeline-content">
+                      <div style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "0.5rem",
+                        flexWrap: "wrap",
+                        gap: "0.5rem"
+                      }}>
+                        <span className={`badge badge-status-${update.status}`}>
+                          {update.status.replace("_", " ")}
+                        </span>
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                          {formatDate(update.createdAt)}
+                        </span>
+                      </div>
+                      <p style={{ fontSize: "0.9rem", color: "var(--text-secondary)", marginBottom: "0.5rem" }}>
+                        {update.description}
+                      </p>
+                      <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                        <ShieldCheck size={13} color="var(--success)" />
+                        {update.officialName} • Official
+                      </div>
                     </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-                    <div className="form-group">
-                      <label className="form-label">Progress Update Notes</label>
-                      <textarea 
-                        className="form-control" 
-                        placeholder="Details of progress or explanation for resolution/rejection..."
-                        value={updateDesc}
-                        onChange={(e) => setUpdateDesc(e.target.value)}
-                        style={{ minHeight: "80px" }}
-                        required
-                      />
+          {/* Comments */}
+          <div style={{ marginBottom: "1.5rem" }}>
+            <h3 style={{ fontSize: "1.1rem", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <MessageSquare size={18} color="var(--primary)" /> Comments ({comments.length})
+            </h3>
+
+            <div className="comments-container" style={{ marginTop: "0" }}>
+              {comments.length === 0 ? (
+                <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", padding: "1rem 0" }}>
+                  No comments yet. Be the first to comment!
+                </p>
+              ) : (
+                comments.map(comment => (
+                  <div key={comment.id} className={`comment-card ${comment.isOfficial ? "official-comment" : ""}`}>
+                    <div className="comment-header">
+                      <span style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontWeight: 600 }}>
+                        {comment.isOfficial && <ShieldCheck size={14} color="var(--success)" />}
+                        {comment.userName}
+                        {comment.isOfficial && (
+                          <span style={{ fontSize: "0.7rem", color: "var(--success)", fontWeight: 600 }}>Official</span>
+                        )}
+                      </span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                        {formatDate(comment.createdAt)}
+                      </span>
                     </div>
-
-                    <button 
-                      type="submit" 
-                      className="btn btn-primary" 
-                      style={{ width: "100%", background: "var(--success)" }}
-                      disabled={statusSubmitting}
-                    >
-                      {statusSubmitting ? "Updating..." : "Submit Status Update"}
-                    </button>
-                  </form>
-                </div>
+                    <p style={{ fontSize: "0.9rem", color: "var(--text-secondary)", lineHeight: 1.6 }}>
+                      {comment.text}
+                    </p>
+                  </div>
+                ))
               )}
             </div>
 
+            {/* Add comment */}
+            <form onSubmit={handleAddComment} style={{ marginTop: "1rem" }}>
+              <textarea
+                className="form-control"
+                rows={3}
+                placeholder={currentUser ? "Write a comment or update..." : "Please sign in to comment"}
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                disabled={!currentUser}
+                required
+              />
+              {currentUser && (
+                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "0.75rem", gap: "0.75rem" }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={handleVote}
+                    style={{
+                      padding: "0.6rem 1.25rem",
+                      fontSize: "0.85rem"
+                    }}
+                  >
+                    <ThumbsUp size={15} fill={isUpvoted ? "white" : "transparent"} />
+                    {isUpvoted ? "Upvoted" : "Upvote"} ({issue.upvotes})
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={sending} style={{ padding: "0.6rem 1.25rem", fontSize: "0.85rem" }}>
+                    <Send size={15} /> {sending ? "Sending..." : "Submit"}
+                  </button>
+                </div>
+              )}
+            </form>
           </div>
         </div>
       </div>

@@ -1,177 +1,186 @@
 import React, { useState } from "react";
-import { LogIn, Mail, Lock, Shield, User } from "lucide-react";
+import { LogIn, Mail, Lock, ShieldCheck, User, Eye, EyeOff } from "lucide-react";
 import { authService } from "../services/firebase";
 
 export default function Login({ onLoginSuccess, onSwitchToRegister }) {
-  const [role, setRole] = useState("citizen"); // citizen or official
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [role, setRole] = useState("citizen");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError("");
+    setLoading(true);
     try {
       const user = await authService.signIn(email, password);
-      // Ensure the logged in user matches the role selected in the toggle
-      if (user.role !== role) {
-        throw new Error(`This account is registered as a ${user.role}. Please select the correct portal.`);
-      }
       onLoginSuccess(user);
     } catch (err) {
-      console.error(err);
-      setError(err.message || "Invalid credentials!");
+      setError(err.message || "Login failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
+  const fillDemoCitizen = () => {
+    setEmail("citizen@example.com");
+    setPassword("Admin@123456");
+    setRole("citizen");
+  };
+
+  const fillDemoOfficial = () => {
+    setEmail("official@example.com");
+    setPassword("Admin@123456");
+    setRole("official");
+  };
+
   return (
-    <div className="animate-fade" style={{
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      minHeight: "70vh",
-      padding: "2rem 0"
-    }}>
-      <div className="glass-card" style={{ width: "100%", maxWidth: "450px", padding: "2.5rem 2rem" }}>
+    <div className="animate-fade" style={{ maxWidth: "480px", margin: "0 auto" }}>
+      <div className="glass-card" style={{ padding: "2.5rem" }}>
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
           <div style={{
-            background: "var(--primary-light)",
-            width: "50px",
-            height: "50px",
-            borderRadius: "12px",
-            display: "inline-flex",
+            width: "64px",
+            height: "64px",
+            borderRadius: "16px",
+            background: "linear-gradient(135deg, var(--primary) 0%, var(--success) 100%)",
+            display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "var(--primary)",
-            marginBottom: "1rem"
+            margin: "0 auto 1rem",
+            color: "white"
           }}>
-            <LogIn size={24} />
+            <LogIn size={28} />
           </div>
-          <h2 style={{ fontSize: "1.8rem", marginBottom: "0.5rem" }}>Welcome Back</h2>
-          <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>Access your CrowdCare civic portal</p>
+          <h2 style={{ fontSize: "1.75rem", marginBottom: "0.25rem" }}>Welcome Back</h2>
+          <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Sign in to your CrowdCare account</p>
         </div>
 
-        {/* Role Toggle Selector */}
+        {/* Role selector */}
         <div style={{
-          display: "flex",
-          background: "rgba(0,0,0,0.2)",
-          padding: "0.25rem",
-          borderRadius: "10px",
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "0.75rem",
           marginBottom: "1.5rem"
         }}>
-          <button 
+          <button
             type="button"
-            className="btn"
             onClick={() => setRole("citizen")}
-            style={{
-              flex: 1,
-              padding: "0.5rem",
-              borderRadius: "8px",
-              fontSize: "0.85rem",
-              background: role === "citizen" ? "var(--primary)" : "transparent",
-              color: role === "citizen" ? "white" : "var(--text-secondary)",
-              gap: "0.4rem"
-            }}
+            className={`btn ${role === "citizen" ? "btn-primary" : "btn-secondary"}`}
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}
           >
-            <User size={14} />
-            Citizen Portal
+            <User size={16} /> Citizen
           </button>
-          <button 
+          <button
             type="button"
-            className="btn"
             onClick={() => setRole("official")}
-            style={{
-              flex: 1,
-              padding: "0.5rem",
-              borderRadius: "8px",
-              fontSize: "0.85rem",
-              background: role === "official" ? "var(--success)" : "transparent",
-              color: role === "official" ? "white" : "var(--text-secondary)",
-              gap: "0.4rem"
-            }}
+            className={`btn ${role === "official" ? "btn-primary" : "btn-secondary"}`}
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}
           >
-            <Shield size={14} />
-            Official Portal
+            <ShieldCheck size={16} /> Official
           </button>
         </div>
 
-        {error && (
-          <div style={{
-            padding: "0.75rem 1rem",
-            background: "var(--danger-light)",
-            border: "1px solid var(--danger)",
-            borderRadius: "8px",
-            color: "var(--danger)",
-            fontSize: "0.85rem",
-            marginBottom: "1.5rem",
-            textAlign: "center"
-          }}>
-            {error}
-          </div>
-        )}
-
         <form onSubmit={handleSubmit}>
-          <div className="form-group" style={{ position: "relative" }}>
+          <div className="form-group">
             <label className="form-label">Email Address</label>
             <div style={{ position: "relative" }}>
-              <Mail size={16} color="var(--text-muted)" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)" }} />
-              <input 
-                type="email" 
-                className="form-control" 
-                placeholder="email@example.com"
+              <Mail size={16} style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+              <input
+                type="email"
+                className="form-control"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                style={{ paddingLeft: "2.5rem" }}
-                required 
+                style={{ paddingLeft: "2.75rem" }}
+                required
               />
             </div>
           </div>
 
-          <div className="form-group" style={{ position: "relative", marginBottom: "2rem" }}>
+          <div className="form-group">
             <label className="form-label">Password</label>
             <div style={{ position: "relative" }}>
-              <Lock size={16} color="var(--text-muted)" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)" }} />
-              <input 
-                type="password" 
-                className="form-control" 
-                placeholder="••••••••"
+              <Lock size={16} style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+              <input
+                type={showPassword ? "text" : "password"}
+                className="form-control"
+                placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                style={{ paddingLeft: "2.5rem" }}
-                required 
+                style={{ paddingLeft: "2.75rem", paddingRight: "2.75rem" }}
+                required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: "absolute", right: "1rem", top: "50%", transform: "translateY(-50%)",
+                  background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)",
+                  display: "flex", alignItems: "center", padding: 0
+                }}
+                tabIndex={-1}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
           </div>
 
-          <button 
-            type="submit" 
-            className="btn btn-primary" 
-            style={{ width: "100%", padding: "0.85rem", borderRadius: "10px", background: role === "official" ? "var(--success)" : "var(--primary)" }}
+          {error && (
+            <div style={{
+              background: "var(--danger-light)",
+              border: "1px solid rgba(239, 68, 68, 0.3)",
+              color: "var(--danger)",
+              padding: "0.75rem 1rem",
+              borderRadius: "10px",
+              fontSize: "0.85rem",
+              marginBottom: "1.25rem"
+            }}>
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="btn btn-primary"
             disabled={loading}
+            style={{ width: "100%", padding: "0.9rem", fontSize: "1rem" }}
           >
-            {loading ? "Signing In..." : "Sign In"}
+            {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
 
-        <div style={{ textAlign: "center", marginTop: "1.5rem", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-          Don't have an account?{" "}
-          <button 
-            onClick={onSwitchToRegister}
-            style={{ 
-              background: "none", 
-              border: "none", 
-              color: "var(--primary)", 
-              fontWeight: 600, 
-              cursor: "pointer",
-              padding: 0
-            }}
-          >
-            Sign Up
-          </button>
+        <div style={{ marginTop: "1.5rem", textAlign: "center" }}>
+          <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+            Don't have an account?{" "}
+            <button
+              onClick={onSwitchToRegister}
+              style={{ background: "none", border: "none", color: "var(--primary)", fontWeight: 600, cursor: "pointer" }}
+            >
+              Sign Up
+            </button>
+          </p>
+        </div>
+
+        {/* Demo accounts */}
+        <div style={{
+          marginTop: "2rem",
+          borderTop: "1px solid var(--border)",
+          paddingTop: "1.5rem"
+        }}>
+          <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", textAlign: "center", marginBottom: "0.75rem" }}>
+            Quick Demo Access
+          </p>
+          <div style={{ display: "flex", gap: "0.75rem" }}>
+            <button className="btn btn-secondary" onClick={fillDemoCitizen} style={{ flex: 1, fontSize: "0.85rem" }}>
+              <User size={14} /> Demo Citizen
+            </button>
+            <button className="btn btn-secondary" onClick={fillDemoOfficial} style={{ flex: 1, fontSize: "0.85rem" }}>
+              <ShieldCheck size={14} /> Demo Official
+            </button>
+          </div>
         </div>
       </div>
     </div>
