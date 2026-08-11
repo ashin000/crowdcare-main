@@ -204,7 +204,7 @@ export default function AuthorityDashboard() {
         </div>
       </div>
 
-      {/* Analytics Charts (using Recharts) */}
+      {/* Analytics Charts */}
       <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "2rem", marginBottom: "2rem" }} className="grid-2">
         
         {/* Recharts Bar Chart: Category distribution */}
